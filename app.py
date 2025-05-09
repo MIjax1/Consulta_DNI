@@ -21,16 +21,27 @@ token_ciclo = itertools.cycle(TOKENS)
 # === ESTILO MEJORADO Y PROFESIONAL ===
 st.markdown("""
     <style>
+    /* Fondo con animación de gradiente */
     .stApp {
-        background-color: #f4f6f9;
+        background: linear-gradient(-45deg, #f1f5f9, #e0f2fe, #fef3c7, #f1f5f9);
+        background-size: 400% 400%;
+        animation: gradientBG 12s ease infinite;
         font-family: 'Segoe UI', sans-serif;
     }
+
+    @keyframes gradientBG {
+        0% {background-position: 0% 50%;}
+        50% {background-position: 100% 50%;}
+        100% {background-position: 0% 50%;}
+    }
+
     .main .block-container {
-        background-color: #ffffff;
+        background-color: rgba(255,255,255,0.9);
         border-radius: 16px;
         padding: 2rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
+
     h1 {
         font-size: 2.2em;
         color: #1e293b;
@@ -39,6 +50,7 @@ st.markdown("""
         margin-bottom: 0.8em;
         text-align: center;
     }
+
     textarea {
         background-color: #ffffff !important;
         border: 2px solid #0ea5e9 !important;
@@ -46,18 +58,35 @@ st.markdown("""
         font-size: 16px !important;
         color: #1e293b !important;
         padding: 10px !important;
+        width: 100% !important;
     }
+
     .stButton button {
         background-color: #0ea5e9 !important;
         color: white !important;
         font-weight: bold;
         border-radius: 10px;
         padding: 0.6em 1.2em;
+        width: 100%;
     }
+
     .stDownloadButton button {
         background-color: #334155 !important;
         color: white !important;
         border-radius: 10px;
+        width: 100%;
+    }
+
+    @media only screen and (max-width: 768px) {
+        .main .block-container {
+            padding: 1rem;
+        }
+        textarea {
+            font-size: 14px !important;
+        }
+        .stButton button, .stDownloadButton button {
+            font-size: 14px;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
