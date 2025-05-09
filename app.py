@@ -1,61 +1,126 @@
 import streamlit as st
-import pandas as pd
 import requests
+import pandas as pd
+import time
+import itertools
 
-TOKEN = "1f17cd95fae8ef4c9f8752c26753e4f51393f27d8f3f0875aee5580d5abb5f7b"
+# === CONFIGURACIÓN GENERAL ===
+st.set_page_config(page_title="Consulta Masiva de DNIs", page_icon="🧾", layout="centered")
 
-# Consulta individual usando ApiPeruDev
-def consultar_dni(dni):
+# === TOKENS Y LÍMITE POR TOKEN ===
+TOKENS = [
+    "2e2e37ebaa20a5dfb62c06b61ce7589341d87b259cad83ade5aca3a45253cc10",
+    "2d258586a04f28c3409315a27ec64865d80ed2f0c643a3a8f8a76d0960fb9f05",
+    "44a296c30f85be0407a00660a5fde4ac7e540a50a3925f17621dc3fefbf536eb",
+    "833cd499bc5299a6d5c162576a9a8d10c4836831c6eef6dbaaf878b61b9a339e",
+    # Puedes agregar más tokens aquí
+]
+LIMITE_POR_TOKEN = 100
+token_ciclo = itertools.cycle(TOKENS)
+
+# === ESTILO MEJORADO Y PROFESIONAL ===
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #f4f6f9;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    .main .block-container {
+        background-color: #ffffff;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+        font-size: 2.2em;
+        color: #1e293b;
+        border-bottom: 2px solid #0ea5e9;
+        padding-bottom: 0.3em;
+        margin-bottom: 0.8em;
+        text-align: center;
+    }
+    textarea {
+        background-color: #ffffff !important;
+        border: 2px solid #0ea5e9 !important;
+        border-radius: 10px !important;
+        font-size: 16px !important;
+        color: #1e293b !important;
+        padding: 10px !important;
+    }
+    .stButton button {
+        background-color: #0ea5e9 !important;
+        color: white !important;
+        font-weight: bold;
+        border-radius: 10px;
+        padding: 0.6em 1.2em;
+    }
+    .stDownloadButton button {
+        background-color: #334155 !important;
+        color: white !important;
+        border-radius: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# === TÍTULO Y DESCRIPCIÓN ===
+st.title("🔍 Consulta Masiva de DNIs")
+st.caption(f"API: apiperu.dev · {len(TOKENS)} token(s) registrados · Hasta {LIMITE_POR_TOKEN * len(TOKENS)} consultas")
+
+# === INGRESO DE DATOS ===
+st.markdown("### 📋 Pega tu lista de DNIs")
+dni_text = st.text_area("🧾 Ingrese uno por línea o separados por comas:", height=250)
+
+# === FUNCIÓN DE CONSULTA INDIVIDUAL ===
+def consultar_dni(dni, token):
     url = "https://apiperu.dev/api/dni"
     headers = {
-        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {TOKEN}"
+        "Accept": "application/json"
     }
-    body = {"dni": dni}
     try:
-        response = requests.post(url, headers=headers, json=body, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("success"):
-                return data["data"].get("nombre_completo", "No encontrado")
-            else:
-                return "No encontrado"
-        else:
-            return f"Error {response.status_code}"
+        r = requests.post(url, headers=headers, json={"dni": dni}, timeout=5)
+        if r.status_code == 200 and r.json().get("success"):
+            d = r.json()["data"]
+            nombre_formateado = f"{d.get('nombres', '')} {d.get('apellido_paterno', '')} {d.get('apellido_materno', '')}".strip()
+            return {"DNI": dni, "Nombre Completo": nombre_formateado}
+        return {"DNI": dni, "Nombre Completo": "No encontrado"}
     except Exception as e:
-        return str(e)
+        return {"DNI": dni, "Nombre Completo": str(e)}
 
-# Interfaz Streamlit
-st.title("🧾 Consulta masiva de DNIs (ApiPeruDev)")
-
-st.write("Pega una lista de DNIs (uno por línea o separados por coma):")
-
-dni_text = st.text_area("Lista de DNIs", height=200)
-
-if st.button("Consultar"):
-    if dni_text.strip() == "":
-        st.warning("⚠️ Ingresa al menos un DNI.")
+# === BOTÓN DE CONSULTA ===
+if st.button("🚀 Consultar DNIs"):
+    if not dni_text.strip():
+        st.warning("⚠️ Por favor, ingresa al menos un DNI.")
     else:
-        if "," in dni_text:
-            dni_list = [d.strip() for d in dni_text.split(",") if d.strip()]
-        else:
-            dni_list = [d.strip() for d in dni_text.splitlines() if d.strip()]
+        dni_list = [d.strip() for d in dni_text.replace(",", "\n").splitlines() if d.strip()]
+        total_dnis = len(dni_list)
+        max_dnis = LIMITE_POR_TOKEN * len(TOKENS)
+
+        if total_dnis > max_dnis:
+            st.warning(f"⚠️ Solo se procesarán los primeros {max_dnis} DNIs por límite de tokens.")
+            dni_list = dni_list[:max_dnis]
 
         resultados = []
-        with st.spinner("Consultando, por favor espera..."):
-            for dni in dni_list:
-                nombre = consultar_dni(dni)
-                resultados.append({"DNI": dni, "Nombre Completo": nombre})
+        progress = st.progress(0)
+        total_tokens = len(TOKENS)
+        consultas_realizadas = 0
+        token_actual = next(token_ciclo)
 
-        df = pd.DataFrame(resultados)
-        st.success("✅ Consulta completada")
-        st.dataframe(df)
+        with st.spinner("⌛ Realizando consultas..."):
+            for i, dni in enumerate(dni_list, 1):
+                if consultas_realizadas >= LIMITE_POR_TOKEN:
+                    token_actual = next(token_ciclo)
+                    consultas_realizadas = 0
+                resultado = consultar_dni(dni, token_actual)
+                resultados.append(resultado)
+                consultas_realizadas += 1
+                progress.progress(i / len(dni_list))
+                time.sleep(1)
 
-        # Descarga
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Descargar CSV", csv, "resultados_dni.csv", "text/csv")
+        df_resultado = pd.DataFrame(resultados)
+        st.success(f"✅ Consulta completada ({len(df_resultado)} registros procesados)")
+        st.dataframe(df_resultado, use_container_width=True)
 
-
-
-# python -m streamlit run app.py
+        csv = df_resultado.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Descargar resultados en CSV", csv, "resultados_dni.csv", "text/csv")
