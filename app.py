@@ -136,16 +136,33 @@ if st.button("🚀 Consultar DNIs"):
         consultas_realizadas = 0
         token_actual = next(token_ciclo)
 
+        resultados = []
+        progress = st.progress(0)
+        total_tokens = len(TOKENS)
+        consultas_realizadas = 0
+        token_actual = next(token_ciclo)
+        consultas_totales = len(dni_list)
+        total_disponible = LIMITE_POR_TOKEN * len(TOKENS)
+
+        status_placeholder = st.empty()  # ← Para mostrar contador dinámico
+
         with st.spinner("⌛ Realizando consultas..."):
             for i, dni in enumerate(dni_list, 1):
                 if consultas_realizadas >= LIMITE_POR_TOKEN:
                     token_actual = next(token_ciclo)
                     consultas_realizadas = 0
+
                 resultado = consultar_dni(dni, token_actual)
                 resultados.append(resultado)
+
                 consultas_realizadas += 1
-                progress.progress(i / len(dni_list))
+                progress.progress(i / consultas_totales)
+
+                restante = total_disponible - i
+                status_placeholder.info(f"🧮 Consultas realizadas: {i} / {total_disponible} · Restantes: {restante}")
+
                 time.sleep(1)
+
 
         df_resultado = pd.DataFrame(resultados)
         st.success(f"✅ Consulta completada ({len(df_resultado)} registros procesados)")
